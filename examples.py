@@ -1,5 +1,4 @@
 import time
-
 import targomiko
 
 with targomiko.SSHConnection("127.0.0.1", "user", password="password") as ssh:
