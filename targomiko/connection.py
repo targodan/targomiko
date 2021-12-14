@@ -1,10 +1,17 @@
 import os
+import socket
 from typing import Optional
 
 import paramiko as paramiko
+from paramiko import SSHException
 from paramiko.sftp_client import SFTPClient
+from paramiko.ssh_exception import NoValidConnectionsError
 
 from .command import RemoteCommand
+
+
+class MaxAttemptsExceededError(RuntimeError):
+    pass
 
 
 class SSHConnection:
@@ -15,7 +22,7 @@ class SSHConnection:
 
     def __init__(self, host: str,
                  username: Optional[str], password: Optional[str] = None, key_filename: Optional[str] = None,
-                 timeout: Optional[float] = None, auto_add_host_key: bool = True, **kwargs):
+                 timeout: Optional[float] = None, max_attempts_count: Optional[int] = 1, auto_add_host_key: bool = True, **kwargs):
         """
         Initializes and connects using paramiko and sane defaults for zero-user-interaction automation.
 
@@ -24,6 +31,7 @@ class SSHConnection:
         :param password: Optional password used for login (if omitted, key_filename must be given).
         :param key_filename: Optional key filename used for login (if omitted, password must be given).
         :param timeout: Optional timeout in seconds for connection.
+        :param max_attempts_count: Max. number of connection attempts, infinite if None.
         :param auto_add_host_key: If True (default), the missing host key policy "AutoAdd" will be used.
         :param kwargs: Additional args passed to paramiko.SSHClient.connect.
         """
@@ -47,7 +55,20 @@ class SSHConnection:
         self._ssh = paramiko.SSHClient()
         if auto_add_host_key:
             self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self._ssh.connect(hostname=host, username=username, timeout=timeout, **kwargs)
+
+        attempts = 0
+        while True:
+            try:
+                attempts += 1
+                self._ssh.connect(hostname=host, username=username, timeout=timeout, **kwargs)
+                break
+            except (NoValidConnectionsError, socket.error) as e:
+                if max_attempts_count and attempts >= max_attempts_count:
+                    raise MaxAttemptsExceededError(f'exceeded number of connection attempts: {max_attempts_count}') from e
+
+    @property
+    def client(self) -> paramiko.SSHClient:
+        return self._ssh
 
     def exec(self, command: str) -> RemoteCommand:
         """

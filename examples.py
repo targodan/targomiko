@@ -4,6 +4,10 @@ import targomiko
 with targomiko.SSHConnection("127.0.0.1", "user", password="password") as ssh:
     ssh.upload_recursive(".", "/opt/targomiko")
 
+    # Do something with the underlying paramiko client
+    with ssh.client.open_sftp() as sftp:
+        sftp.mkdir("/opt/somedir")
+
     # Execute command and wait for exit.
     with ssh.exec('/opt/targomiko/entrypoint.sh arg1 "long arg 2"') as cmd:
         cmd.wait()

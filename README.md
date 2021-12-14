@@ -4,6 +4,12 @@ A wrapper for paramiko, focused on easy remote command handling of IO, waiting, 
 
 It also brings along sane defaults for zero-user-interaction automation.
 
+## Installing
+
+```commandline
+pip install targomiko
+```
+
 ## Examples
 
 ```python
@@ -12,6 +18,10 @@ import targomiko
 
 with targomiko.SSHConnection("127.0.0.1", "user", password="password") as ssh:
     ssh.upload_recursive(".", "/opt/targomiko")
+
+    # Do something with the underlying paramiko client
+    with ssh.client.open_sftp() as sftp:
+        sftp.mkdir("/opt/somedir")
 
     # Execute command and wait for exit.
     with ssh.exec('/opt/targomiko/entrypoint.sh arg1 "long arg 2"') as cmd:
@@ -48,5 +58,4 @@ with targomiko.SSHConnection("127.0.0.1", "user", password="password") as ssh:
         print("command timed out")
     finally:
         cmd.close()
-
 ```
